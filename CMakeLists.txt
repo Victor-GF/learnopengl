@@ -11,6 +11,7 @@ add_executable(learnopengl src/main.cpp
         src/glad.c
         src/Shader.h
         src/Shader.cpp
+        src/stb_image.cpp
 )
 
 target_link_libraries(learnopengl

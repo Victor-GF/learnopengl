@@ -86,7 +86,7 @@ void Shader::Use() const { glUseProgram(ID); }
 
 void Shader::SetBool(const std::string_view name, const bool value) const {
     if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
-        std::cout << "ERROR::SHADER::SET_BOOL::NAME_NOT_FOUND" << std::endl;
+        std::cout << "ERROR::SHADER::SET_BOOL::NAME_NOT_FOUND" << name << std::endl;
     } else {
         glUniform1i(location, static_cast<int>(value));
     }
@@ -94,7 +94,7 @@ void Shader::SetBool(const std::string_view name, const bool value) const {
 
 void Shader::SetInt(const std::string_view name, const int value) const {
     if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
-        std::cout << "ERROR::SHADER::SET_INT::NAME_NOT_FOUND" << std::endl;
+        std::cout << "ERROR::SHADER::SET_INT::NAME_NOT_FOUND" << name << std::endl;
     } else {
         glUniform1i(location, value);
     }
@@ -102,7 +102,7 @@ void Shader::SetInt(const std::string_view name, const int value) const {
 
 void Shader::SetFloat(const std::string_view name, const float value) const {
     if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
-        std::cout << "ERROR::SHADER::SET_FLOAT::NAME_NOT_FOUND" << std::endl;
+        std::cout << "ERROR::SHADER::SET_FLOAT::NAME_NOT_FOUND" << name << std::endl;
     } else {
         glUniform1f(location, value);
     }

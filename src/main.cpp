@@ -26,6 +26,22 @@ void processInput(GLFWwindow *window) {
         glfwSetWindowShouldClose(window, true);
 }
 
+void triangle_coordinates(const Shader& shader) {
+    auto model = glm::mat4(1.0f);
+    model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    auto view = glm::mat4(1.0f);
+    // note that we're translating the scene in the reverse direction of where we want to move
+    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+
+    unsigned int location = glGetUniformLocation(shader.GetId(), "model");
+    glUniformMatrix4fv(static_cast<GLint>(location), 1, GL_FALSE, glm::value_ptr(model));
+    location = glGetUniformLocation(shader.GetId(), "view");
+    glUniformMatrix4fv(static_cast<GLint>(location), 1, GL_FALSE, glm::value_ptr(view));
+    location = glGetUniformLocation(shader.GetId(), "projection");
+    glUniformMatrix4fv(static_cast<GLint>(location), 1, GL_FALSE, glm::value_ptr(projection));
+}
+
 void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader,
                    const std::array<unsigned int, 2> &textures) {
     processInput(g_Window);
@@ -40,15 +56,13 @@ void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader
     glActiveTexture(GL_TEXTURE1);
     glBindTexture(GL_TEXTURE_2D, textures[1]);
     shader.Use();
-    const auto timeValue = static_cast<float>(glfwGetTime());
+    // const auto timeValue = static_cast<float>(glfwGetTime());
     // const float greenValue = (std::sin(timeValue) / 2.0f) + 0.5f;
     // const int vertexColorLocation = glGetUniformLocation(shaderProgram, "uniform_Color");
     // glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
-    auto trans = glm::mat4(1.0f);
-    trans = glm::translate(trans, glm::vec3(0.5f, -0.5f, 0.0f));
-    trans = glm::rotate(trans, std::sin(timeValue), glm::vec3(0.0f, 0.0f, 1.0f));
-    const unsigned int transformLoc = glGetUniformLocation(shader.GetId(), "transform");
-    glUniformMatrix4fv(static_cast<GLint>(transformLoc), 1, GL_FALSE, glm::value_ptr(trans));
+
+    triangle_coordinates(shader);
+
     for (const unsigned int VAO: VAOs) {
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);

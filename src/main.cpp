@@ -6,18 +6,20 @@
 #include <glad/glad.h>
 #include <memory>
 
-#include "Shader.h"
-#include "stb_image.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "Shader.h"
+#include "stb_image.h"
 
-constexpr int window_width = 800;
-constexpr int window_height = 600;
+int window_width = 800;
+int window_height = 600;
 constexpr auto window_title = "LearnOpenGL";
 GLFWwindow *g_Window;
 
 void framebuffer_size_callback(GLFWwindow *window, const int width, const int height) {
+    // window_width = width;
+    // window_height = height;
     glViewport(0, 0, width, height);
 }
 
@@ -26,20 +28,18 @@ void processInput(GLFWwindow *window) {
         glfwSetWindowShouldClose(window, true);
 }
 
-void triangle_coordinates(const Shader& shader) {
+void triangle_coordinates(const Shader &shader) {
     auto model = glm::mat4(1.0f);
-    model = glm::rotate(model, glm::radians(-55.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     auto view = glm::mat4(1.0f);
-    // note that we're translating the scene in the reverse direction of where we want to move
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    auto projection = glm::mat4(1.0f);
 
-    unsigned int location = glGetUniformLocation(shader.GetId(), "model");
-    glUniformMatrix4fv(static_cast<GLint>(location), 1, GL_FALSE, glm::value_ptr(model));
-    location = glGetUniformLocation(shader.GetId(), "view");
-    glUniformMatrix4fv(static_cast<GLint>(location), 1, GL_FALSE, glm::value_ptr(view));
-    location = glGetUniformLocation(shader.GetId(), "projection");
-    glUniformMatrix4fv(static_cast<GLint>(location), 1, GL_FALSE, glm::value_ptr(projection));
+    model = glm::rotate(model, static_cast<float>(glfwGetTime()), glm::vec3(0.5f, 1.0f, 0.0f));
+    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
+    projection = glm::perspective(glm::radians(45.0f), static_cast<float>(window_width) / static_cast<float>(window_height), 0.1f, 100.0f);
+
+    shader.SetMat4("model", model);
+    shader.SetMat4("view", view);
+    shader.SetMat4("projection", projection);
 }
 
 void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader,
@@ -65,7 +65,8 @@ void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader
 
     for (const unsigned int VAO: VAOs) {
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 
     glfwSwapBuffers(g_Window);
@@ -73,48 +74,80 @@ void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader
 }
 
 void hello_triangle(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> &VBOs, unsigned int &EBO,
-                    std::unique_ptr<Shader> &shader, std::array<unsigned int, 2>&textures) {
+                    std::unique_ptr<Shader> &shader, std::array<unsigned int, 2> &textures) {
     // Shaders
     const std::string resDir = "../res/";
     const std::string vertexShaderSrc = resDir + "/shader/shader.vs";
     const std::string fragmentShaderSrc = resDir + "/shader/shader.fs";
     shader = std::make_unique<Shader>(vertexShaderSrc, fragmentShaderSrc);
 
-    std::array<std::array<float, 36>, 1> triangles{};
-    triangles[0] = {
-        // positions          // colors          // texture coords (note that we changed them to 'zoom in' on our texture image)
-        0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f, // top right
-        0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f, // bottom right
-       -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f, // bottom left
-       -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f  // top left
-    };
-    const unsigned int indices[] = {
-        0, 1, 3, // first triangle
-        1, 2, 3  // second triangle
+    glEnable(GL_DEPTH_TEST);
+
+    constexpr float vertices[] = {
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
     };
 
     // VBO, VAO and EBO
     glGenVertexArrays(static_cast<int>(VAOs.size()), VAOs.data());
     glGenBuffers(static_cast<int>(VBOs.size()), VBOs.data());
-    glGenBuffers(1, &EBO);
+    // glGenBuffers(1, &EBO);
 
-    for (int i = 0; i < triangles.size(); ++i) {
-        auto &triangle = triangles[i];
+    for (int i = 0; i < VAOs.size(); ++i) {
 
         glBindVertexArray(VAOs[i]);
         glBindBuffer(GL_ARRAY_BUFFER, VBOs[i]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(triangle), triangle.data(), GL_STATIC_DRAW);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
         // position attrib
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(0));
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void *>(0));
         glEnableVertexAttribArray(0);
         // color atrrib
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(3 * sizeof(float)));
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void *>(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         // Texture attrib
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(6 * sizeof(float)));
-        glEnableVertexAttribArray(2);
+        // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(6 * sizeof(float)));
+        // glEnableVertexAttribArray(2);
     }
 
     // Texture
@@ -129,7 +162,7 @@ void hello_triangle(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(true);
     std::string textureImagePath = resDir + "/textures/container.jpg";
-    unsigned char* textureData = stbi_load(textureImagePath.c_str(), &width, &height, &nrChannels, 0);
+    unsigned char *textureData = stbi_load(textureImagePath.c_str(), &width, &height, &nrChannels, 0);
     if (textureData) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -192,7 +225,7 @@ void setup_window() {
 
     glDeleteVertexArrays(VAOs.size(), VAOs.data());
     glDeleteBuffers(VBOs.size(), VBOs.data());
-    glDeleteBuffers(1, &EBO);
+    // glDeleteBuffers(1, &EBO);
     shader.reset();
     glfwTerminate();
 }

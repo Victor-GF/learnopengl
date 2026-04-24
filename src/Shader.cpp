@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <glm/gtc/type_ptr.hpp>
 
 Shader::Shader(const std::string_view vertexShaderPath, const std::string_view fragmentShaderPath) {
     // 1. retrieve the vertex/fragment source code from filePath
@@ -105,5 +106,13 @@ void Shader::SetFloat(const std::string_view name, const float value) const {
         std::cout << "ERROR::SHADER::SET_FLOAT::NAME_NOT_FOUND" << name << std::endl;
     } else {
         glUniform1f(location, value);
+    }
+}
+
+void Shader::SetMat4(const std::string_view name, glm::mat4 &value) const {
+    if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
+        std::cout << "ERROR::SHADER::SET_MAT4::NAME_NOT_FOUND" << name << std::endl;
+    } else {
+        glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
     }
 }

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <string_view>
+#include <glm/glm.hpp>
 
 class Shader {
     unsigned int ID;
@@ -20,4 +21,5 @@ public:
     void SetBool(std::string_view name, bool value) const;
     void SetInt(std::string_view name, int value) const;
     void SetFloat(std::string_view name, float value) const;
+    void SetMat4(std::string_view name, glm::mat4 &value) const;
 };

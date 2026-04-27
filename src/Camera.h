@@ -18,8 +18,8 @@ enum class CameraMovement {
 class Camera {
     constexpr static float YAW = -90.0f;
     constexpr static float PITCH = 0.0f;
-    constexpr static float SPEED = 2.5f;
-    constexpr static float SENSITIVITY = 0.1f;
+    constexpr static float SPEED = 3.5f;
+    constexpr static float SENSITIVITY = 0.2f;
     constexpr static float ZOOM = 45.0f;
 
     // calculates the front vector from the Camera's (updated) Euler Angles

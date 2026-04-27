@@ -1,5 +1,10 @@
 #include <array>
+#include <cstdint>
 #include <iostream>
+#include <span>
+#include "glm/ext/matrix_transform.hpp"
+#include "glm/fwd.hpp"
+#include "glm/trigonometric.hpp"
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -9,6 +14,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "Camera.h"
 #include "Shader.h"
 #include "stb_image.h"
 
@@ -16,6 +22,12 @@ int window_width = 800;
 int window_height = 600;
 constexpr auto window_title = "LearnOpenGL";
 GLFWwindow *g_Window;
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+float lastX = window_width / 2.0f;
+float lastY = window_height / 2.0f;
+bool firstMouse = true;
+float deltaTime = 0.0f; // time between current frame and last frame
+float lastFrame = 0.0f;
 
 void framebuffer_size_callback(GLFWwindow *window, const int width, const int height) {
     // window_width = width;
@@ -26,24 +38,56 @@ void framebuffer_size_callback(GLFWwindow *window, const int width, const int he
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera.ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera.ProcessKeyboard(CameraMovement::BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera.ProcessKeyboard(CameraMovement::LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera.ProcessKeyboard(CameraMovement::RIGHT, deltaTime);
+}
+
+void mouse_callback(GLFWwindow *window, double xposIn, double yposIn) {
+    float xpos = static_cast<float>(xposIn);
+    float ypos = static_cast<float>(yposIn);
+
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+
+    lastX = xpos;
+    lastY = ypos;
+
+    camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+// glfw: whenever the mouse scroll wheel scrolls, this callback is called
+// ----------------------------------------------------------------------
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+    camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
 void triangle_coordinates(const Shader &shader) {
-    auto model = glm::mat4(1.0f);
     auto view = glm::mat4(1.0f);
     auto projection = glm::mat4(1.0f);
 
-    model = glm::rotate(model, static_cast<float>(glfwGetTime()), glm::vec3(0.5f, 1.0f, 0.0f));
-    view = glm::translate(view, glm::vec3(0.0f, 0.0f, -3.0f));
-    projection = glm::perspective(glm::radians(45.0f), static_cast<float>(window_width) / static_cast<float>(window_height), 0.1f, 100.0f);
+    view = camera.GetViewMatrix();
+    projection = glm::perspective(glm::radians(camera.Zoom),
+                                  static_cast<float>(window_width) / static_cast<float>(window_height), 0.1f, 100.0f);
 
-    shader.SetMat4("model", model);
-    shader.SetMat4("view", view);
     shader.SetMat4("projection", projection);
+    shader.SetMat4("view", view);
 }
 
 void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader,
-                   const std::array<unsigned int, 2> &textures) {
+                   const std::array<unsigned int, 2> &textures, const std::array<glm::vec3, 10> &cubePositions,
+                   const std::array<float, 180> &vertices) {
     processInput(g_Window);
 
     glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -65,8 +109,19 @@ void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader
 
     for (const unsigned int VAO: VAOs) {
         glBindVertexArray(VAO);
-        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        uint16_t i = 0;
+        for (const auto cubePosition: cubePositions) {
+            auto model = glm::mat4(1.0f);
+            model = glm::translate(model, cubePosition);
+            float angle = 20.0f * i;
+            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            shader.SetMat4("model", model);
+
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+
+            ++i;
+        }
     }
 
     glfwSwapBuffers(g_Window);
@@ -74,7 +129,8 @@ void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader
 }
 
 void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> &VBOs, unsigned int &EBO,
-                    std::unique_ptr<Shader> &shader, std::array<unsigned int, 2> &textures) {
+                 std::unique_ptr<Shader> &shader, std::array<unsigned int, 2> &textures,
+                 std::array<glm::vec3, 10> &cubePositions, std::array<float, 180> &vertices) {
     // Shaders
     const std::string resDir = "../res/";
     const std::string vertexShaderSrc = resDir + "/shader/shader.vs";
@@ -83,62 +139,28 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
 
     glEnable(GL_DEPTH_TEST);
 
-    float vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+    vertices = {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
+                0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
 
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+                -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+                0.5f,  0.5f,  0.5f,  1.0f, 1.0f, -0.5f, 0.5f,  0.5f,  0.0f, 1.0f, -0.5f, -0.5f, 0.5f,  0.0f, 0.0f,
 
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+                -0.5f, 0.5f,  0.5f,  1.0f, 0.0f, -0.5f, 0.5f,  -0.5f, 1.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
+                -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, -0.5f, 0.5f,  0.5f,  1.0f, 0.0f,
 
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+                0.5f,  0.5f,  0.5f,  1.0f, 0.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.5f,  -0.5f, -0.5f, 0.0f, 1.0f,
+                0.5f,  -0.5f, -0.5f, 0.0f, 1.0f, 0.5f,  -0.5f, 0.5f,  0.0f, 0.0f, 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
 
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+                -0.5f, -0.5f, -0.5f, 0.0f, 1.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 1.0f, 0.5f,  -0.5f, 0.5f,  1.0f, 0.0f,
+                0.5f,  -0.5f, 0.5f,  1.0f, 0.0f, -0.5f, -0.5f, 0.5f,  0.0f, 0.0f, -0.5f, -0.5f, -0.5f, 0.0f, 1.0f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
-    };
+                -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, 0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+                0.5f,  0.5f,  0.5f,  1.0f, 0.0f, -0.5f, 0.5f,  0.5f,  0.0f, 0.0f, -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f};
 
-    glm::vec3 cubePositions[] = {
-        glm::vec3( 0.0f,  0.0f,  0.0f),
-        glm::vec3( 2.0f,  5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3( 2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f,  3.0f, -7.5f),
-        glm::vec3( 1.3f, -2.0f, -2.5f),
-        glm::vec3( 1.5f,  2.0f, -2.5f),
-        glm::vec3( 1.5f,  0.2f, -1.5f),
-        glm::vec3(-1.3f,  1.0f, -1.5f)
-    };
+    cubePositions = {glm::vec3(0.0f, 0.0f, 0.0f),     glm::vec3(2.0f, 5.0f, -15.0f), glm::vec3(-1.5f, -2.2f, -2.5f),
+                     glm::vec3(-3.8f, -2.0f, -12.3f), glm::vec3(2.4f, -0.4f, -3.5f), glm::vec3(-1.7f, 3.0f, -7.5f),
+                     glm::vec3(1.3f, -2.0f, -2.5f),   glm::vec3(1.5f, 2.0f, -2.5f),  glm::vec3(1.5f, 0.2f, -1.5f),
+                     glm::vec3(-1.3f, 1.0f, -1.5f)};
 
     // VBO, VAO and EBO
     glGenVertexArrays(static_cast<int>(VAOs.size()), VAOs.data());
@@ -149,7 +171,7 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
 
         glBindVertexArray(VAOs[i]);
         glBindBuffer(GL_ARRAY_BUFFER, VBOs[i]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(), GL_STATIC_DRAW);
         // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
         // position attrib
@@ -159,8 +181,8 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
         glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), reinterpret_cast<void *>(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
         // Texture attrib
-        // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(6 * sizeof(float)));
-        // glEnableVertexAttribArray(2);
+        // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(6 *
+        // sizeof(float))); glEnableVertexAttribArray(2);
     }
 
     // Texture
@@ -203,7 +225,7 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
     shader->Use();
     shader->SetInt("uniformTexture1", 0);
     shader->SetInt("uniformTexture2", 1);
-    shader->SetFloat("mixInterpolate", 0.5f);
+    shader->SetFloat("mixInterpolate", 0.1f);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 }
@@ -224,16 +246,27 @@ void setup_window() {
     }
 
     glfwSetFramebufferSizeCallback(g_Window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(g_Window, mouse_callback);
+    glfwSetScrollCallback(g_Window, scroll_callback);
+
+    glfwSetInputMode(g_Window, GLFW_CURSOR, GLFW_CURSOR_CAPTURED);
 
     std::unique_ptr<Shader> shader;
     unsigned int VAO, VBO, EBO;
     std::array<unsigned int, 1> VAOs{}, VBOs{};
     std::array<unsigned int, 2> textures{};
 
-    hello_cubes(VAOs, VBOs, EBO, shader, textures);
+    std::array<glm::vec3, 10> cubePositions{};
+    std::array<float, 180> vertices{};
+
+    hello_cubes(VAOs, VBOs, EBO, shader, textures, cubePositions, vertices);
 
     while (!glfwWindowShouldClose(g_Window)) {
-        update_window(VAOs, *shader, textures);
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        update_window(VAOs, *shader, textures, cubePositions, vertices);
     }
 
     glDeleteVertexArrays(VAOs.size(), VAOs.data());

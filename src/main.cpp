@@ -249,7 +249,7 @@ void setup_window() {
     glfwSetCursorPosCallback(g_Window, mouse_callback);
     glfwSetScrollCallback(g_Window, scroll_callback);
 
-    glfwSetInputMode(g_Window, GLFW_CURSOR, GLFW_CURSOR_CAPTURED);
+    glfwSetInputMode(g_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     std::unique_ptr<Shader> shader;
     unsigned int VAO, VBO, EBO;

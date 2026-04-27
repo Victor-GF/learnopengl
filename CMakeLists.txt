@@ -12,6 +12,7 @@ add_executable(learnopengl src/main.cpp
         src/Shader.h
         src/Shader.cpp
         src/stb_image.cpp
+        src/Camera.h
 )
 
 target_link_libraries(learnopengl

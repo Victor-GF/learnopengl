@@ -73,7 +73,7 @@ void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader
     glfwPollEvents();
 }
 
-void hello_triangle(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> &VBOs, unsigned int &EBO,
+void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> &VBOs, unsigned int &EBO,
                     std::unique_ptr<Shader> &shader, std::array<unsigned int, 2> &textures) {
     // Shaders
     const std::string resDir = "../res/";
@@ -83,7 +83,7 @@ void hello_triangle(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 
 
     glEnable(GL_DEPTH_TEST);
 
-    constexpr float vertices[] = {
+    float vertices[] = {
         -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
          0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
          0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
@@ -125,6 +125,19 @@ void hello_triangle(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 
          0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
         -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
         -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+    };
+
+    glm::vec3 cubePositions[] = {
+        glm::vec3( 0.0f,  0.0f,  0.0f),
+        glm::vec3( 2.0f,  5.0f, -15.0f),
+        glm::vec3(-1.5f, -2.2f, -2.5f),
+        glm::vec3(-3.8f, -2.0f, -12.3f),
+        glm::vec3( 2.4f, -0.4f, -3.5f),
+        glm::vec3(-1.7f,  3.0f, -7.5f),
+        glm::vec3( 1.3f, -2.0f, -2.5f),
+        glm::vec3( 1.5f,  2.0f, -2.5f),
+        glm::vec3( 1.5f,  0.2f, -1.5f),
+        glm::vec3(-1.3f,  1.0f, -1.5f)
     };
 
     // VBO, VAO and EBO
@@ -190,7 +203,7 @@ void hello_triangle(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 
     shader->Use();
     shader->SetInt("uniformTexture1", 0);
     shader->SetInt("uniformTexture2", 1);
-    shader->SetFloat("mixInterpolate", 0.1f);
+    shader->SetFloat("mixInterpolate", 0.5f);
 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 }
@@ -217,7 +230,7 @@ void setup_window() {
     std::array<unsigned int, 1> VAOs{}, VBOs{};
     std::array<unsigned int, 2> textures{};
 
-    hello_triangle(VAOs, VBOs, EBO, shader, textures);
+    hello_cubes(VAOs, VBOs, EBO, shader, textures);
 
     while (!glfwWindowShouldClose(g_Window)) {
         update_window(VAOs, *shader, textures);

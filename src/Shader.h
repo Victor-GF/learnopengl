@@ -21,5 +21,8 @@ public:
     void SetBool(std::string_view name, bool value) const;
     void SetInt(std::string_view name, int value) const;
     void SetFloat(std::string_view name, float value) const;
-    void SetMat4(std::string_view name, glm::mat4 &value) const;
+    void SetMat4(std::string_view name, glm::mat4& value) const;
+    void SetVec2(std::string_view name, glm::vec2 value) const;
+    void SetVec3(std::string_view name, glm::vec3 value) const;
+    void SetVec4(std::string_view name, glm::vec4 value) const;
 };

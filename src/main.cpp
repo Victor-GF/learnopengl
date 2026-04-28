@@ -1,8 +1,7 @@
 #include <array>
-#include <cstdint>
 #include <iostream>
-#include <span>
 #include "glm/ext/matrix_transform.hpp"
+#include "glm/ext/vector_float3.hpp"
 #include "glm/fwd.hpp"
 #include "glm/trigonometric.hpp"
 
@@ -38,6 +37,7 @@ void framebuffer_size_callback(GLFWwindow *window, const int width, const int he
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camera.ProcessKeyboard(CameraMovement::FORWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
@@ -85,45 +85,49 @@ void triangle_coordinates(const Shader &shader) {
     shader.SetMat4("view", view);
 }
 
-void update_window(const std::array<unsigned int, 1> &VAOs, const Shader &shader,
-                   const std::array<unsigned int, 2> &textures, const std::array<glm::vec3, 10> &cubePositions,
-                   const std::array<float, 180> &vertices) {
+void update_window(unsigned int &VBO, unsigned int &cubeVAO, unsigned int &lightCubeVAO, Shader &lightingShader,
+                   Shader &lightCubeShader) {
     processInput(g_Window);
 
-    glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    // be sure to activate shader when setting uniforms/drawing objects
+    lightingShader.Use();
+    lightingShader.SetVec3("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
+    lightingShader.SetVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
 
-    // Triangle
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, textures[0]);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, textures[1]);
-    shader.Use();
-    // const auto timeValue = static_cast<float>(glfwGetTime());
-    // const float greenValue = (std::sin(timeValue) / 2.0f) + 0.5f;
-    // const int vertexColorLocation = glGetUniformLocation(shaderProgram, "uniform_Color");
-    // glUniform4f(vertexColorLocation, 0.0f, greenValue, 0.0f, 1.0f);
+    // view/projection transformations
+    glm::mat4 projection =
+            glm::perspective(glm::radians(camera.Zoom),
+                             static_cast<float>(window_width) / static_cast<float>(window_height), 0.1f, 100.0f);
+    glm::mat4 view = camera.GetViewMatrix();
+    lightingShader.SetMat4("projection", projection);
+    lightingShader.SetMat4("view", view);
 
-    triangle_coordinates(shader);
+    // world transformation
+    glm::mat4 model = glm::mat4(1.0f);
+    lightingShader.SetMat4("model", model);
 
-    for (const unsigned int VAO: VAOs) {
-        glBindVertexArray(VAO);
+    // render the cube
+    glBindVertexArray(cubeVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        uint16_t i = 0;
-        for (const auto cubePosition: cubePositions) {
-            auto model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePosition);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            shader.SetMat4("model", model);
+    // also draw the lamp object
+    glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+    lightCubeShader.Use();
+    lightCubeShader.SetMat4("projection", projection);
+    lightCubeShader.SetMat4("view", view);
+    model = glm::mat4(1.0f);
+    model = glm::translate(model, lightPos);
+    model = glm::scale(model, glm::vec3(0.2f)); // a smaller cube
+    lightCubeShader.SetMat4("model", model);
 
-            glDrawArrays(GL_TRIANGLES, 0, 36);
+    glBindVertexArray(lightCubeVAO);
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 
-            ++i;
-        }
-    }
-
+    // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+    // -------------------------------------------------------------------------------
     glfwSwapBuffers(g_Window);
     glfwPollEvents();
 }
@@ -137,7 +141,6 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
     const std::string fragmentShaderSrc = resDir + "/shader/shader.fs";
     shader = std::make_unique<Shader>(vertexShaderSrc, fragmentShaderSrc);
 
-    glEnable(GL_DEPTH_TEST);
 
     vertices = {-0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.5f,  -0.5f, -0.5f, 1.0f, 0.0f, 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f,
                 0.5f,  0.5f,  -0.5f, 1.0f, 1.0f, -0.5f, 0.5f,  -0.5f, 0.0f, 1.0f, -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
@@ -230,6 +233,49 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 }
 
+void hello_lighting(unsigned int &VBO, unsigned int &cubeVAO, unsigned int &lightCubeVAO,
+                    std::unique_ptr<Shader> &lightingShader, std::unique_ptr<Shader> &lightCubeShader) {
+
+    lightingShader = std::make_unique<Shader>("../res/shader/colors.vs", "../res/shader/colors.fs");
+    lightCubeShader = std::make_unique<Shader>("../res/shader/light_cube.vs", "../res/shader/light_cube.fs");
+
+    std::array<float, 108> vertices = {
+            -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f,
+            0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
+
+            -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,
+            0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,
+
+            -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
+            -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,
+
+            0.5f,  0.5f,  0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f,
+            0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,
+
+            -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,
+            0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f,
+
+            -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,
+            0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f,
+    };
+
+    glGenVertexArrays(1, &cubeVAO);
+    glGenBuffers(1, &VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(), GL_STATIC_DRAW);
+    glBindVertexArray(cubeVAO);
+    // position attribute
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<void *>(0));
+    glEnableVertexAttribArray(0);
+
+    glGenVertexArrays(1, &lightCubeVAO);
+    glBindVertexArray(lightCubeVAO);
+    // we only need to bind to the VBO (to link it with glVertexAttribPointer), no need to fill it; the VBO's data
+    // already contains all we need (it's already bound, but we do it again for educational purposes)
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<void *>(0));
+    glEnableVertexAttribArray(0);
+}
 
 void setup_window() {
     g_Window = glfwCreateWindow(window_width, window_height, window_title, nullptr, nullptr);
@@ -249,30 +295,34 @@ void setup_window() {
     glfwSetCursorPosCallback(g_Window, mouse_callback);
     glfwSetScrollCallback(g_Window, scroll_callback);
 
-    glfwSetInputMode(g_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(g_Window, GLFW_CURSOR, GLFW_CURSOR_CAPTURED);
 
-    std::unique_ptr<Shader> shader;
-    unsigned int VAO, VBO, EBO;
+    glEnable(GL_DEPTH_TEST);
+
+
+    std::unique_ptr<Shader> shader, lightingShader, lightCubeShader;
+    unsigned int cubeVAO, VBO, lightCubeVAO;
     std::array<unsigned int, 1> VAOs{}, VBOs{};
     std::array<unsigned int, 2> textures{};
 
     std::array<glm::vec3, 10> cubePositions{};
     std::array<float, 180> vertices{};
 
-    hello_cubes(VAOs, VBOs, EBO, shader, textures, cubePositions, vertices);
+    hello_lighting(VBO, cubeVAO, lightCubeVAO, lightingShader, lightCubeShader);
 
     while (!glfwWindowShouldClose(g_Window)) {
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        update_window(VAOs, *shader, textures, cubePositions, vertices);
+        update_window(VBO, cubeVAO, lightCubeVAO, *lightingShader, *lightCubeShader);
     }
 
-    glDeleteVertexArrays(VAOs.size(), VAOs.data());
-    glDeleteBuffers(VBOs.size(), VBOs.data());
+    glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteVertexArrays(1, &lightCubeVAO);
+    glDeleteBuffers(1, &VBO);
     // glDeleteBuffers(1, &EBO);
-    shader.reset();
+    shader.reset(); lightingShader.reset(); lightCubeShader.reset();
     glfwTerminate();
 }
 
@@ -281,7 +331,10 @@ int main() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+#ifdef __APPLE__
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
 
 
     setup_window();

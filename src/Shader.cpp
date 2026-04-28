@@ -5,10 +5,11 @@
 
 #include <fstream>
 #include <glad/glad.h>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <sstream>
 #include <string>
-#include <glm/gtc/type_ptr.hpp>
+#include <string_view>
 
 Shader::Shader(const std::string_view vertexShaderPath, const std::string_view fragmentShaderPath) {
     // 1. retrieve the vertex/fragment source code from filePath
@@ -87,7 +88,7 @@ void Shader::Use() const { glUseProgram(ID); }
 
 void Shader::SetBool(const std::string_view name, const bool value) const {
     if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
-        std::cout << "ERROR::SHADER::SET_BOOL::NAME_NOT_FOUND" << name << std::endl;
+        std::cout << "ERROR::SHADER::SET_BOOL::NAME_NOT_FOUND " << name << std::endl;
     } else {
         glUniform1i(location, static_cast<int>(value));
     }
@@ -95,7 +96,7 @@ void Shader::SetBool(const std::string_view name, const bool value) const {
 
 void Shader::SetInt(const std::string_view name, const int value) const {
     if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
-        std::cout << "ERROR::SHADER::SET_INT::NAME_NOT_FOUND" << name << std::endl;
+        std::cout << "ERROR::SHADER::SET_INT::NAME_NOT_FOUND " << name << std::endl;
     } else {
         glUniform1i(location, value);
     }
@@ -103,7 +104,7 @@ void Shader::SetInt(const std::string_view name, const int value) const {
 
 void Shader::SetFloat(const std::string_view name, const float value) const {
     if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
-        std::cout << "ERROR::SHADER::SET_FLOAT::NAME_NOT_FOUND" << name << std::endl;
+        std::cout << "ERROR::SHADER::SET_FLOAT::NAME_NOT_FOUND " << name << std::endl;
     } else {
         glUniform1f(location, value);
     }
@@ -111,8 +112,32 @@ void Shader::SetFloat(const std::string_view name, const float value) const {
 
 void Shader::SetMat4(const std::string_view name, glm::mat4 &value) const {
     if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
-        std::cout << "ERROR::SHADER::SET_MAT4::NAME_NOT_FOUND" << name << std::endl;
+        std::cout << "ERROR::SHADER::SET_MAT4::NAME_NOT_FOUND " << name << std::endl;
     } else {
         glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
+    }
+}
+
+void Shader::SetVec2(const std::string_view name, glm::vec2 value) const {
+    if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
+        std::cout << "ERROR::SHADER::SET_MAT4::NAME_NOT_FOUND " << name << std::endl;
+    } else {
+        glUniform2fv(location, 1, glm::value_ptr(value));
+    }
+}
+
+void Shader::SetVec3(const std::string_view name, glm::vec3 value) const {
+    if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
+        std::cout << "ERROR::SHADER::SET_MAT4::NAME_NOT_FOUND " << name << std::endl;
+    } else {
+        glUniform3fv(location, 1, glm::value_ptr(value));
+    }
+}
+
+void Shader::SetVec4(const std::string_view name, glm::vec4 value) const {
+    if (const auto location = glGetUniformLocation(ID, name.data()); location == -1) {
+        std::cout << "ERROR::SHADER::SET_MAT4::NAME_NOT_FOUND " << name << std::endl;
+    } else {
+        glUniform4fv(location, 1, glm::value_ptr(value));
     }
 }

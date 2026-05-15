@@ -5,7 +5,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include_directories(includes)
-link_directories(lib)
 
 add_executable(learnopengl src/main.cpp
         src/glad.c
@@ -15,7 +14,19 @@ add_executable(learnopengl src/main.cpp
         src/Camera.h
 )
 
-target_link_libraries(learnopengl
+target_compile_definitions(learnopengl PUBLIC 
+    ROOT_DIR="${CMAKE_SOURCE_DIR}/"
+)
+
+if(WIN32)
+    target_link_libraries(learnopengl
+        glfw3
+        opengl32.lib
+    )
+    target_link_directories(learnopengl PUBLIC lib)
+
+else()
+    target_link_libraries(learnopengl
         glfw3
         GL
         X11
@@ -23,5 +34,6 @@ target_link_libraries(learnopengl
         Xrandr
         Xi
         dl
-)
-
+    )
+    link_directories(lib)
+endif()

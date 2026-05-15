@@ -1,5 +1,6 @@
 #include <array>
 #include <iostream>
+#include <filesystem>
 #include "glm/ext/matrix_transform.hpp"
 #include "glm/ext/vector_float3.hpp"
 #include "glm/fwd.hpp"
@@ -236,8 +237,11 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
 void hello_lighting(unsigned int &VBO, unsigned int &cubeVAO, unsigned int &lightCubeVAO,
                     std::unique_ptr<Shader> &lightingShader, std::unique_ptr<Shader> &lightCubeShader) {
 
-    lightingShader = std::make_unique<Shader>("../res/shader/colors.vs", "../res/shader/colors.fs");
-    lightCubeShader = std::make_unique<Shader>("../res/shader/light_cube.vs", "../res/shader/light_cube.fs");
+    std::cout << "Diretorio atual de execucao: " << std::filesystem::current_path() << std::endl;
+    const auto shadersPath = std::string(ROOT_DIR) + "res/shader/";
+    lightingShader = std::make_unique<Shader>(shadersPath + "colors.vs", shadersPath + "colors.fs");
+    lightCubeShader =
+            std::make_unique<Shader>(shadersPath + "light_cube.vs", shadersPath + "light_cube.fs");
 
     std::array<float, 108> vertices = {
             -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f,

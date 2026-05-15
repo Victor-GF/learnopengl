@@ -72,7 +72,7 @@ public:
     }
 
     // returns the view matrix calculated using Euler Angles and the LookAt Matrix
-    [[nodiscard]] constexpr glm::mat4 GetViewMatrix() const { return glm::lookAt(Position, Position + Front, Up); }
+    [[nodiscard]] inline glm::mat4 GetViewMatrix() const { return glm::lookAt(Position, Position + Front, Up); }
 
     constexpr void ProcessKeyboard(const CameraMovement direction, const float deltaTime) {
         const float velocity = MovementSpeed * deltaTime;

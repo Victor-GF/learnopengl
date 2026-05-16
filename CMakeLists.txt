@@ -35,5 +35,5 @@ else()
         Xi
         dl
     )
-    link_directories(lib)
+    target_link_directories(learnopengl PUBLIC lib)
 endif()

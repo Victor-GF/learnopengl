@@ -18,12 +18,13 @@ target_compile_definitions(learnopengl PUBLIC
     ROOT_DIR="${CMAKE_SOURCE_DIR}/"
 )
 
+target_link_directories(learnopengl PUBLIC lib)
+
 if(WIN32)
     target_link_libraries(learnopengl
-        glfw3
-        opengl32.lib
+            glfw3
+            opengl32.lib
     )
-    target_link_directories(learnopengl PUBLIC lib)
 
 else()
     target_link_libraries(learnopengl
@@ -34,6 +35,6 @@ else()
         Xrandr
         Xi
         dl
+        assimp
     )
-    target_link_directories(learnopengl PUBLIC lib)
 endif()

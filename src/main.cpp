@@ -93,10 +93,17 @@ void update_window(unsigned int &VBO, unsigned int &cubeVAO, unsigned int &light
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    glm::vec3 lightPos(0.0f, 0.0f, 2.0f);
+    lightPos.x = 1.0f + sin(glfwGetTime()) * 2.0f;
+    lightPos.y = sin(glfwGetTime() / 2.0f) * 1.0f;
+
     // be sure to activate shader when setting uniforms/drawing objects
     lightingShader.Use();
     lightingShader.SetVec3("objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
     lightingShader.SetVec3("lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+    lightingShader.SetVec3("lightPos", lightPos);
+    lightingShader.SetVec3("viewPos", camera.Position);
+
 
     // view/projection transformations
     glm::mat4 projection =
@@ -115,7 +122,6 @@ void update_window(unsigned int &VBO, unsigned int &cubeVAO, unsigned int &light
     glDrawArrays(GL_TRIANGLES, 0, 36);
 
     // also draw the lamp object
-    glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
     lightCubeShader.Use();
     lightCubeShader.SetMat4("projection", projection);
     lightCubeShader.SetMat4("view", view);
@@ -237,30 +243,53 @@ void hello_cubes(std::array<unsigned int, 1> &VAOs, std::array<unsigned int, 1> 
 void hello_lighting(unsigned int &VBO, unsigned int &cubeVAO, unsigned int &lightCubeVAO,
                     std::unique_ptr<Shader> &lightingShader, std::unique_ptr<Shader> &lightCubeShader) {
 
-    std::cout << "Diretorio atual de execucao: " << std::filesystem::current_path() << std::endl;
     const auto shadersPath = std::string(ROOT_DIR) + "res/shader/";
     lightingShader = std::make_unique<Shader>(shadersPath + "colors.vs", shadersPath + "colors.fs");
     lightCubeShader =
             std::make_unique<Shader>(shadersPath + "light_cube.vs", shadersPath + "light_cube.fs");
 
-    std::array<float, 108> vertices = {
-            -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f,
-            0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
+    constexpr std::array vertices = {
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,
 
-            -0.5f, -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,
-            0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, -0.5f, 0.5f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f, 1.0f,
 
-            -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f, -0.5f,
-            -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,
 
-            0.5f,  0.5f,  0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f,
-            0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,  0.5f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,
 
-            -0.5f, -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, 0.5f,
-            0.5f,  -0.5f, 0.5f,  -0.5f, -0.5f, 0.5f,  -0.5f, -0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,
 
-            -0.5f, 0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  0.5f,
-            0.5f,  0.5f,  0.5f,  -0.5f, 0.5f,  0.5f,  -0.5f, 0.5f,  -0.5f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,
+        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
     glGenVertexArrays(1, &cubeVAO);
@@ -269,15 +298,18 @@ void hello_lighting(unsigned int &VBO, unsigned int &cubeVAO, unsigned int &ligh
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices.data(), GL_STATIC_DRAW);
     glBindVertexArray(cubeVAO);
     // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<void *>(0));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void *>(0));
     glEnableVertexAttribArray(0);
+    // normal attribute+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void *>(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
 
     glGenVertexArrays(1, &lightCubeVAO);
     glBindVertexArray(lightCubeVAO);
     // we only need to bind to the VBO (to link it with glVertexAttribPointer), no need to fill it; the VBO's data
     // already contains all we need (it's already bound, but we do it again for educational purposes)
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), reinterpret_cast<void *>(0));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), reinterpret_cast<void *>(0));
     glEnableVertexAttribArray(0);
 }
 
@@ -299,7 +331,7 @@ void setup_window() {
     glfwSetCursorPosCallback(g_Window, mouse_callback);
     glfwSetScrollCallback(g_Window, scroll_callback);
 
-    glfwSetInputMode(g_Window, GLFW_CURSOR, GLFW_CURSOR_CAPTURED);
+    glfwSetInputMode(g_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     glEnable(GL_DEPTH_TEST);
 

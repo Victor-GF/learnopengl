@@ -12,6 +12,7 @@ add_executable(learnopengl src/main.cpp
         src/Shader.cpp
         src/stb_image.cpp
         src/Camera.h
+        src/Mesh.h
 )
 
 target_compile_definitions(learnopengl PUBLIC 
